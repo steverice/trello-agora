@@ -9,7 +9,12 @@ var GRAY_ICON = 'https://cdn.hyperdev.com/us-east-1%3A3d31b21c-01a0-4da2-8827-4b
 var WHITE_ICON = 'https://cdn.hyperdev.com/us-east-1%3A3d31b21c-01a0-4da2-8827-4bc6e88b7618%2Ficon-white.svg';
 
 var boardButtonCallback = function(t, options){
-  console.log('calling back');
+  return t.popup({
+    title: 'New Poll',
+    url: './create-poll.html',
+    args: {},
+    height: 600 // initial height, can be changed later
+  });
 };
 
 TrelloPowerUp.initialize({
@@ -23,7 +28,7 @@ TrelloPowerUp.initialize({
         dark: WHITE_ICON,
         light: GRAY_ICON,
       },
-      text: 'Vote!',
+      text: 'New Poll',
       condition: 'admin',
       callback: boardButtonCallback
     }];
