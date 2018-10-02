@@ -1,4 +1,5 @@
 /* global TrelloPowerUp */
+/* global agoraFetch */
 
 var Promise = TrelloPowerUp.Promise;
 
@@ -17,10 +18,44 @@ var boardButtonCallback = function(t, options){
   });
 };
 
+var submitListVotes = function(list, pollId) {
+  return function(t, options) {
+    return Promise.all([
+      t.member('fullName'),
+      t.loadSecret('agora_key'),
+      Promise.all(list.cards.map(function(card, index) {
+        return t.get(card.id, 'shared', 'agora_choice_' + pollId);
+      })),
+    ]).then(function ([member, apiKey, choiceIds]) {
+      var choices = choiceIds.map(function(choiceId, index) {
+        return {
+          choice_id: choiceId,
+          poll_id: pollId,
+          rank: index + 1,
+          user: {
+            name: member.fullName,
+          },
+        };
+      });
+
+      return agoraFetch('votes/for-poll/' + pollId, apiKey, {
+        method: 'POST',
+        body: JSON.stringify(choices),
+      }).then(function (response) {
+        return response.json();
+      }).then(function (votes) {
+        console.log(votes);
+        if (votes.length > 0) {
+          t.set('member', 'shared', 'agora_user_' + votes[0].poll_id, votes[0].user.id); 
+        }
+      });
+    });
+  };
+};
+
 TrelloPowerUp.initialize({
   // Start adding handlers for your capabilities here!
   'board-buttons': function(t, options){
-    console.log('board buttons!');
     return [{
       // we can either provide a button that has a callback function
       // that callback function should probably open a popup, overlay, or boardBar
@@ -30,7 +65,7 @@ TrelloPowerUp.initialize({
       },
       text: 'New Poll',
       condition: 'admin',
-      callback: boardButtonCallback
+      callback: boardButtonCallback,
     }];
   },
   'authorization-status': function(t, options){
@@ -44,6 +79,26 @@ TrelloPowerUp.initialize({
       title: 'Authorize Open Agora Account',
       url: './token.html',
       height: 140,
+    });
+  },
+  'list-actions': function (t) {
+    t.getAll().then(function(all) {
+      console.log(all);
+    });
+    return Promise.all([
+      t.list('all'),
+      t.get('board', 'shared', 'agora_poll'),
+    ])
+    .then(function ([list, pollId]) {
+      console.log('poll id', pollId);
+      if (pollId) {
+        return [{
+          text: "Submit Current Ranking",
+          callback: submitListVotes(list, pollId),
+        }];
+      } else {
+        return [];
+      }
     });
   },
 });

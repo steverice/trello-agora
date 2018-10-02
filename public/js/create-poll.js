@@ -19,11 +19,11 @@ t.render(function(){
   return Promise.all([
     t.board('name'),
     t.cards('id', 'name', 'desc', 'closed', 'labels'),
+    t.loadSecret('agora_key'),
   ])
-  .then(function ([board, cards]) {
-    console.log(JSON.stringify(cards, null, 2));
+  .then(function ([board, cards, apiKey]) {
     var cardMap = new Map(cards.map(function (card) {
-      return [card.label, card];
+      return [card.name, card];
     }));
     var cardChoices = cards.map(function(card) {
       return {
@@ -35,17 +35,16 @@ t.render(function(){
       title: board.name,
       choices: cardChoices,
     };
-    return agoraFetch('polls/with-choices', {
+    return agoraFetch('polls/with-choices', apiKey, {
       method: 'POST',
       body: JSON.stringify(pollOptions),
     }).then(function (response) {
-      var poll = response.json();
-      console.log(poll);
-      
+      return response.json();
+    }).then(function (poll) {      
       // Associate choices with cards
       poll.choices.forEach(function (choice) {
         var card = cardMap.get(choice.label);
-        t.set(card.id, 'shared', 'agora_choice_' + choice.poll_id, choice.id); 
+        t.set(card.id, 'shared', 'agora_choice_' + choice.poll_id, choice.id);
       });
       
       t.set('board', 'shared', 'agora_poll', poll.id); 
